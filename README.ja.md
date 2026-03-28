@@ -93,7 +93,7 @@ cat events.jsonl | jstats "count by type"
 ```sh
 git clone https://github.com/nlink-jp/jstats.git
 cd jstats
-make build        # 現在のプラットフォーム向けにビルド → ./jstats
+make build        # 現在のプラットフォーム向けにビルド → dist/jstats
 make build-all    # 全プラットフォーム向けにクロスコンパイル → dist/
 make package      # ビルドして .zip アーカイブを作成
 make test         # テストを実行
