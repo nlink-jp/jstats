@@ -19,7 +19,7 @@ build-all:
 		$(eval OS   := $(word 1,$(subst /, ,$(platform)))) \
 		$(eval ARCH := $(word 2,$(subst /, ,$(platform)))) \
 		$(eval EXT  := $(if $(filter windows,$(OS)),.exe,)) \
-		$(eval OUT  := dist/$(BINARY)_$(OS)_$(ARCH)$(EXT)) \
+		$(eval OUT  := dist/$(BINARY)-$(OS)-$(ARCH)$(EXT)) \
 		CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) GOCACHE=$(GOCACHE) GOMODCACHE=$(GOMODCACHE) \
 		go build -ldflags "$(LDFLAGS)" -o $(OUT) . ;)
 
@@ -29,8 +29,8 @@ package: build-all
 		$(eval OS   := $(word 1,$(subst /, ,$(platform)))) \
 		$(eval ARCH := $(word 2,$(subst /, ,$(platform)))) \
 		$(eval EXT  := $(if $(filter windows,$(OS)),.exe,)) \
-		$(eval BIN  := dist/$(BINARY)_$(OS)_$(ARCH)$(EXT)) \
-		$(eval ZIP  := dist/$(BINARY)_$(OS)_$(ARCH).zip) \
+		$(eval BIN  := dist/$(BINARY)-$(OS)-$(ARCH)$(EXT)) \
+		$(eval ZIP  := dist/$(BINARY)-$(VERSION)-$(OS)-$(ARCH).zip) \
 		zip -j $(ZIP) $(BIN) LICENSE ;)
 
 ## test: Run tests
