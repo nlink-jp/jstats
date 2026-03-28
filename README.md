@@ -93,7 +93,7 @@ cat events.jsonl | jstats "count by type"
 ```sh
 git clone https://github.com/nlink-jp/jstats.git
 cd jstats
-make build        # current platform → ./jstats
+make build        # current platform → dist/jstats
 make build-all    # cross-compile for all platforms → dist/
 make package      # build + create .zip archives
 make test         # run tests
