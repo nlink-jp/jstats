@@ -37,7 +37,6 @@ test:
 
 ## clean: Remove build artifacts
 clean:
-	rm -f $(BINARY)
 	rm -rf dist/
 
 .PHONY: build build-all package test clean
