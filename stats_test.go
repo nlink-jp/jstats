@@ -65,6 +65,72 @@ func TestSum(t *testing.T) {
 	}
 }
 
+func TestSum_StringValues(t *testing.T) {
+	fn := AggFunc{Func: "sum", Field: "v"}
+	val, err := computeAgg(fn, rows(r("v", "10"), r("v", "20"), r("v", "30")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if val.(float64) != 60 {
+		t.Errorf("want 60, got %v", val)
+	}
+}
+
+// TestNumericFuncs_StringValues verifies all numeric aggregation functions
+// handle string-encoded numbers (e.g. "10" instead of 10).
+func TestNumericFuncs_StringValues(t *testing.T) {
+	data := rows(r("v", "5"), r("v", "2"), r("v", "8"))
+
+	tests := []struct {
+		fn   AggFunc
+		want float64
+	}{
+		{AggFunc{Func: "min", Field: "v"}, 2},
+		{AggFunc{Func: "max", Field: "v"}, 8},
+		{AggFunc{Func: "avg", Field: "v"}, 5},
+		{AggFunc{Func: "median", Field: "v"}, 5},
+		{AggFunc{Func: "range", Field: "v"}, 6},
+		{AggFunc{Func: "p", Field: "v", Perc: 50}, 5},
+	}
+
+	for _, tt := range tests {
+		name := tt.fn.Func
+		if tt.fn.Func == "p" {
+			name = "p50"
+		}
+		t.Run(name, func(t *testing.T) {
+			val, err := computeAgg(tt.fn, data)
+			if err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+			if !approxEq(val.(float64), tt.want, 1e-9) {
+				t.Errorf("%s: want %v, got %v", name, tt.want, val)
+			}
+		})
+	}
+
+	// stdev and var need at least 2 values — test separately
+	t.Run("stdev", func(t *testing.T) {
+		val, err := computeAgg(AggFunc{Func: "stdev", Field: "v"}, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if val == nil {
+			t.Fatal("stdev returned nil")
+		}
+	})
+
+	t.Run("var", func(t *testing.T) {
+		val, err := computeAgg(AggFunc{Func: "var", Field: "v"}, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if val == nil {
+			t.Fatal("var returned nil")
+		}
+	})
+}
+
 func TestMin(t *testing.T) {
 	fn := AggFunc{Func: "min", Field: "v"}
 	val, err := computeAgg(fn, rows(r("v", 5.0), r("v", 2.0), r("v", 8.0)))

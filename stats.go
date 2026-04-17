@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"math"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -15,6 +17,26 @@ func computeStats(rows []Row, q StatsQuery) ([]Row, []string, error) {
 	headers = append(headers, q.ByFields...)
 	for _, fn := range q.Funcs {
 		headers = append(headers, fn.OutputName())
+	}
+
+	// Warn about fields not found in any row (likely typo).
+	if len(rows) > 0 {
+		allFields := map[string]bool{}
+		for _, row := range rows {
+			for k := range row {
+				allFields[k] = true
+			}
+		}
+		for _, fn := range q.Funcs {
+			if fn.Field != "" && !allFields[fn.Field] {
+				fmt.Fprintf(os.Stderr, "warning: field %q not found in any input record\n", fn.Field)
+			}
+		}
+		for _, f := range q.ByFields {
+			if !allFields[f] {
+				fmt.Fprintf(os.Stderr, "warning: by-field %q not found in any input record\n", f)
+			}
+		}
 	}
 
 	// Group rows.
@@ -269,6 +291,12 @@ func toFloat(v interface{}) (float64, error) {
 		return float64(n), nil
 	case json_number:
 		return n.Float64()
+	case string:
+		f, err := strconv.ParseFloat(n, 64)
+		if err != nil {
+			return 0, fmt.Errorf("cannot parse %q as number", n)
+		}
+		return f, nil
 	}
 	return 0, fmt.Errorf("not a number (type %T)", v)
 }
@@ -357,7 +385,7 @@ func modeVal(rows []Row, field string) interface{} {
 
 func distinctValues(rows []Row, field string) []interface{} {
 	seen := map[string]bool{}
-	var out []interface{}
+	out := make([]interface{}, 0)
 	for _, r := range rows {
 		v, ok := r[field]
 		if !ok || v == nil {
@@ -369,11 +397,11 @@ func distinctValues(rows []Row, field string) []interface{} {
 			out = append(out, v)
 		}
 	}
-	return out
+	return out // returns [] not null when no values found
 }
 
 func allValues(rows []Row, field string) []interface{} {
-	var out []interface{}
+	out := make([]interface{}, 0)
 	for _, r := range rows {
 		v, ok := r[field]
 		if !ok || v == nil {
@@ -381,7 +409,7 @@ func allValues(rows []Row, field string) []interface{} {
 		}
 		out = append(out, v)
 	}
-	return out
+	return out // returns [] not null when no values found
 }
 
 func roundFloat(f float64) float64 {
