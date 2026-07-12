@@ -2,7 +2,8 @@ BINARY  := jstats
 MODULE  := github.com/nlink-jp/$(BINARY)
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 
-PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
+# darwin ships arm64 only (no amd64, no universal). linux/windows keep their matrix.
+PLATFORMS := darwin/arm64 linux/amd64 linux/arm64 windows/amd64
 
 LDFLAGS := -ldflags "-X main.version=$(VERSION)"
 
@@ -22,30 +23,29 @@ build:
 
 ## build-all: Cross-compile for all target platforms → dist/
 build-all:
-	$(foreach platform,$(PLATFORMS), \
-		$(eval OS   := $(word 1,$(subst /, ,$(platform)))) \
-		$(eval ARCH := $(word 2,$(subst /, ,$(platform)))) \
-		$(eval EXT  := $(if $(filter windows,$(OS)),.exe,)) \
-		$(eval OUT  := dist/$(BINARY)-$(OS)-$(ARCH)$(EXT)) \
-		CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) \
-		go build $(LDFLAGS) -o $(OUT) . ;)
-	@scripts/codesign-darwin.sh dist/$(BINARY)-darwin-amd64 "$(CODESIGN_IDENTITY)"
-	@scripts/codesign-darwin.sh dist/$(BINARY)-darwin-arm64 "$(CODESIGN_IDENTITY)"
+	@mkdir -p dist
+	@for p in $(PLATFORMS); do os=$${p%/*}; arch=$${p#*/}; \
+		ext=""; [ "$$os" = windows ] && ext=".exe"; \
+		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build $(LDFLAGS) -o dist/$(BINARY)-$$os-$$arch$$ext . ; \
+	done
+	@scripts/codesign-darwin.sh dist/$(BINARY)-darwin-arm64 "$(CODESIGN_IDENTITY)" "$(BINARY)"
 
-## package: Cross-compile, zip, and notarize darwin → dist/
+## package: Build all platforms, archive with version suffix (zip for
+## darwin/windows, tar.gz for linux), bundle the canonical binary +
+## README.md + LICENSE, and notarize the darwin build → dist/. Asset
+## naming follows the org Release Archive Standard
+## (jstats-vX.Y.Z-<os>-<arch>.<ext>).
 package: build-all
-	$(foreach platform,$(PLATFORMS), \
-		$(eval OS   := $(word 1,$(subst /, ,$(platform)))) \
-		$(eval ARCH := $(word 2,$(subst /, ,$(platform)))) \
-		$(eval EXT  := $(if $(filter windows,$(OS)),.exe,)) \
-		$(eval BIN  := dist/$(BINARY)-$(OS)-$(ARCH)$(EXT)) \
-		$(eval ZIP  := dist/$(BINARY)-$(VERSION)-$(OS)-$(ARCH).zip) \
-		$(eval STAGE := dist/_pkg-$(OS)-$(ARCH)) \
-		rm -rf $(STAGE) && mkdir -p $(STAGE) ; \
-		cp $(BIN) $(STAGE)/$(BINARY)$(EXT) ; \
-		zip -j $(ZIP) $(STAGE)/$(BINARY)$(EXT) LICENSE README.md ; \
-		rm -rf $(STAGE) ;)
-	@scripts/notarize-darwin.sh dist/$(BINARY)-$(VERSION)-darwin-amd64.zip "$(NOTARY_PROFILE)"
+	@cd dist && for p in $(PLATFORMS); do os=$${p%/*}; arch=$${p#*/}; \
+		ext=""; [ "$$os" = windows ] && ext=".exe"; \
+		stage=_pkg; rm -rf $$stage; mkdir -p $$stage; \
+		cp "$(BINARY)-$$os-$$arch$$ext" "$$stage/$(BINARY)$$ext"; \
+		cp ../README.md ../LICENSE $$stage/; \
+		base="$(BINARY)-$(VERSION)-$$os-$$arch"; \
+		if [ "$$os" = linux ]; then ( cd $$stage && tar -czf "../$$base.tar.gz" * ); \
+		else ( cd $$stage && zip -q "../$$base.zip" * ); fi; \
+		rm -rf $$stage; \
+	done
 	@scripts/notarize-darwin.sh dist/$(BINARY)-$(VERSION)-darwin-arm64.zip "$(NOTARY_PROFILE)"
 
 ## test: Run tests
