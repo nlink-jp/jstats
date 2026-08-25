@@ -48,6 +48,22 @@ package: build-all
 	done
 	@scripts/notarize-darwin.sh dist/$(BINARY)-$(VERSION)-darwin-arm64.zip "$(NOTARY_PROFILE)"
 
+## verify-release: refuse to release an un-notarized zip (marker gate)
+verify-release:
+	@test -f "dist/$(BINARY)-$(VERSION)-darwin-arm64.zip.notarized" || { \
+		echo "verify-release: FAIL — $(BINARY)-$(VERSION)-darwin-arm64.zip has no notarization marker."; \
+		echo "  make package must end with '[notarize] ...: Accepted'. Do not upload this zip."; \
+		exit 1; }
+	@test "dist/$(BINARY)-$(VERSION)-darwin-arm64.zip.notarized" -nt "dist/$(BINARY)-$(VERSION)-darwin-arm64.zip" || { \
+		echo "verify-release: FAIL — the zip was rebuilt after its marker (re-run make package)."; \
+		exit 1; }
+	@tmp=$$(mktemp -d) && \
+		unzip -oq "dist/$(BINARY)-$(VERSION)-darwin-arm64.zip" -d "$$tmp" && \
+		"$$tmp/$(BINARY)" --version && \
+		spctl -a -vv -t install "$$tmp/$(BINARY)" 2>&1 | head -2 || true; \
+		rm -rf "$$tmp"
+	@echo "verify-release: OK ($(VERSION), notarization marker present)"
+
 ## test: Run tests
 test:
 	go test ./...
@@ -56,7 +72,7 @@ test:
 clean:
 	rm -rf dist/
 
-.PHONY: build build-all package test clean
+.PHONY: build build-all package verify-release test clean
 
 # Homebrew tap generation (see scripts/release-brew.mk). After `make package`,
 # `make brew` generates this formula from the built darwin-arm64 zip into the
