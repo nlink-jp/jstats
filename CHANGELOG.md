@@ -5,6 +5,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-14
+
+### Security
+
+- **Rebuilt with Go 1.27.4, which `go.mod` now requires** (it was `go 1.24.0`).
+  No code of the tool changed. v1.2.0 was built with Go 1.26.4, and 24
+  standard-library advisories have been fixed since. `govulncheck -mode binary`
+  finds none of the affected functions in the published binary — the tool links
+  neither `net/http` nor `crypto/tls` — so this brings the build onto a current
+  toolchain rather than closing a known exposure.
+
+### Changed
+
+- `make package` runs `govulncheck ./...` first (`make vuln`) and stops on a
+  finding, so a release cannot be built past one.
+
 ### Fixed
 
 - **`make verify-release` now fails closed.** Its last block chained unzip, the
