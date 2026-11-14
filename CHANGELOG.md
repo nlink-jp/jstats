@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- `make vuln` — and so `make package` — scans every platform in `PLATFORMS`,
+  with the environment `build-all` builds each with. It scanned the host's
+  build alone, so an advisory in a Linux- or Windows-only package could not
+  stop a release.
+
 ## [1.2.1] - 2026-11-14
 
 ### Security
