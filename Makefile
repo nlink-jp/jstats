@@ -30,12 +30,19 @@ build-all:
 	done
 	@scripts/codesign-darwin.sh dist/$(BINARY)-darwin-arm64 "$(CODESIGN_IDENTITY)" "$(BINARY)"
 
+## vuln: known vulnerabilities in the modules and the standard library this
+## build uses (govulncheck). `package` depends on it, so a release cannot be
+## built past a finding. It needs the network, and its database changes under
+## an unchanged tree: a finding can appear without a commit.
+vuln:
+	govulncheck ./...
+
 ## package: Build all platforms, archive with version suffix (zip for
 ## darwin/windows, tar.gz for linux), bundle the canonical binary +
 ## README.md + LICENSE, and notarize the darwin build → dist/. Asset
 ## naming follows the org Release Archive Standard
 ## (jstats-vX.Y.Z-<os>-<arch>.<ext>).
-package: build-all
+package: vuln build-all
 	@cd dist && for p in $(PLATFORMS); do os=$${p%/*}; arch=$${p#*/}; \
 		ext=""; [ "$$os" = windows ] && ext=".exe"; \
 		stage=_pkg; rm -rf $$stage; mkdir -p $$stage; \
@@ -104,7 +111,7 @@ test:
 clean:
 	rm -rf dist/
 
-.PHONY: build build-all package verify-release test clean
+.PHONY: build build-all package verify-release test clean vuln
 
 # Homebrew tap generation (see scripts/release-brew.mk). After `make package`,
 # `make brew` generates this formula from the built darwin-arm64 zip into the
