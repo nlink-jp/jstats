@@ -13,7 +13,7 @@ unzip jstats-<version>-<os>-<arch>.zip
 mv jstats /usr/local/bin/
 ```
 
-ソースからビルドする場合（Go 1.24 以上が必要）：
+ソースからビルドする場合（Go 1.27.4 以上が必要）：
 
 ```sh
 go install github.com/nlink-jp/jstats@latest
